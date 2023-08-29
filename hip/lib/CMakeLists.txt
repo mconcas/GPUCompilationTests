@@ -1,5 +1,4 @@
 set(HIPIFY_EXECUTABLE "/opt/rocm/bin/hipify-perl")
-set(/opt/rocm/bin/amdclang++)
 file(GLOB CUDA_SOURCES_FULL_PATH "../../cuda/lib/*.cu")
 
 foreach(file ${CUDA_SOURCES_FULL_PATH})

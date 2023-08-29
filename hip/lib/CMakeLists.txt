@@ -20,6 +20,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fgpu-rdc")
 
-add_library(hiplib SHARED cudalib.hip.cxx)
+add_library(hiplib cudalib.hip.cxx)
 
 #  | sed '1{/\#include \"hip\\/hip_runtime.h\"/d}'

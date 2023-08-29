@@ -2,3 +2,4 @@ add_executable(testCudaSeparable testCudaSeparable.cu)
 target_link_libraries(testCudaSeparable cudalib)
 
 set_target_properties(testCudaSeparable PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+set_target_properties(testCudaSeparable PROPERTIES CUDA_ARCHITECTURES "61")

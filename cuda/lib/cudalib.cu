@@ -1,6 +1,11 @@
 #include <cstdio>
 #include "data.h"
 
+template <typename T>
+void discardResult(const T&)
+{
+}
+
 __constant__ Data d_data;
 
 __global__ void libKernel()
@@ -11,5 +16,5 @@ __global__ void libKernel()
 extern "C" void runLibKernel()
 {
     libKernel<<<1, 1>>>();
-    cudaDeviceSynchronize();
+    discardResult(cudaDeviceSynchronize());
 }

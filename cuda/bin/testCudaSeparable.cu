@@ -1,6 +1,11 @@
 #include <cstdio>
 #include "data.h"
 
+template <typename T>
+void discardResult(const T&)
+{
+}
+
 extern __constant__ Data d_data;
 
 extern "C" void runLibKernel();
@@ -12,13 +17,13 @@ __global__ void mainKernel()
 void runMainKernel()
 {
     mainKernel<<<1, 1>>>();
-    cudaDeviceSynchronize();
+    discardResult(cudaDeviceSynchronize());
 }
 
 int main()
 {
     Data h_data = {42, 3.14f, 2.718281828459045};
-    cudaMemcpyToSymbol(d_data, &h_data, sizeof(Data));
+    discardResult(cudaMemcpyToSymbol(d_data, &h_data, sizeof(Data)));
 
     runLibKernel();
     runMainKernel();

@@ -1,3 +1,4 @@
 build
 *.hip.cxx
+*.hip
 .vscode

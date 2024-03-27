@@ -1,4 +1,4 @@
-# GPUSeparableCompilationTest
+# GPUCompilationTest
 Minimal project to be used as baseline for tests on CUDA, HIP and OpenCL tests, eg. separable compilation
 
 ## Build

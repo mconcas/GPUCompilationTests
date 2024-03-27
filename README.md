@@ -1,5 +1,5 @@
 # GPUSeparableCompilationTest
-Test some features with CUDA and HIP separable compilation
+Minimal project to be used as baseline for tests on CUDA, HIP and OpenCL tests, eg. separable compilation
 
 ## Build
 ```bash

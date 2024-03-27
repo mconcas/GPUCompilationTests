@@ -13,7 +13,7 @@ foreach(file ${CUDA_SOURCES_FULL_PATH})
   )
 endforeach()
 
-set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} -fgpu-rdc")
-#  -fgpu-rdc"
+set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS}")
+
 add_executable(gpu-memory-benchmark-hip benchmark.hip Kernels.hip)
 target_link_libraries(gpu-memory-benchmark-hip ${Boost_LIBRARIES})

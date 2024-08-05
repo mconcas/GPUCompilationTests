@@ -1,6 +1,13 @@
-#define CL_TARGET_OPENCL_VERSION 200
-#define __CL_ENABLE_EXCEPTIONS
-#include <CL/cl.hpp>
+#define CL_TARGET_OPENCL_VERSION 120
+#define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#define CL_HPP_TARGET_OPENCL_VERSION 120
+#define CL_HPP_ENABLE_EXCEPTIONS
+
+#ifdef __APPLE__
+#include <CL/opencl.hpp>
+#else
+#include <CL/cl2.hpp>
+#endif
 #include <iostream>
 #include <vector>
 
@@ -9,17 +16,21 @@ const std::string kernelSource =
         printf(\"Hello, World! From device %d %x\\n\", *deviceId, as_uint(*deviceId)); \
     }";
 
-int main() {
-    try {
+int main()
+{
+    try
+    {
         // Get all platforms
         std::vector<cl::Platform> platforms;
         cl::Platform::get(&platforms);
-        if (platforms.empty()) {
+        if (platforms.empty())
+        {
             std::cerr << "No platforms found. Check OpenCL installation!\n";
             exit(1);
         }
 
-        for (auto& platform : platforms) {
+        for (auto &platform : platforms)
+        {
             std::string platformName;
             platform.getInfo(CL_PLATFORM_NAME, &platformName);
             std::cout << "Platform: " << platformName << std::endl;
@@ -27,12 +38,14 @@ int main() {
             // Get all devices for this platform
             std::vector<cl::Device> devices;
             platform.getDevices(CL_DEVICE_TYPE_ALL, &devices);
-            if (devices.empty()) {
+            if (devices.empty())
+            {
                 std::cout << " No devices found on platform.\n";
                 continue;
             }
 
-            for (int j = 0; j < devices.size(); ++j) {
+            for (int j = 0; j < devices.size(); ++j)
+            {
                 std::string deviceName;
                 devices[j].getInfo(CL_DEVICE_NAME, &deviceName);
                 std::cout << "    Device: " << deviceName << std::endl;
@@ -61,10 +74,14 @@ int main() {
                 queue.finish();
             }
         }
-    } catch (cl::Error& e) {
+    }
+    catch (cl::Error &e)
+    {
         std::cerr << "OpenCL error: " << e.what() << ", " << e.err() << std::endl;
         return 1;
-    } catch (std::exception& e) {
+    }
+    catch (std::exception &e)
+    {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }

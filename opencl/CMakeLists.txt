@@ -1,3 +1,5 @@
+set (CMAKE_CXX_STANDARD 11)
+
 add_executable(hello_world_opencl_c src/hello_world_opencl.c)
 target_link_libraries(hello_world_opencl_c ${OpenCL_LIBRARY})
 

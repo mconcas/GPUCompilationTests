@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #define CL_TARGET_OPENCL_VERSION 120
-#include <CL/cl.h>
+#include <opencl/cl.h>
 
 const char *kernelSource =
     "__kernel void helloWorld(__global int* deviceId) {  \

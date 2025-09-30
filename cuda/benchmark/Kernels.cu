@@ -1,3 +1,5 @@
+/// \author: mconcas@cern.ch
+
 #include "Kernels.h"
 #include <chrono>
 #include <cstdio>
@@ -127,7 +129,7 @@ namespace o2
       __global__ void rand_read_k(
           chunk_t *chunkPtr,
           size_t chunkSize,
-          int prime)
+          int32_t prime)
       {
         chunk_t sink{0};
         for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < chunkSize; i += blockDim.x * gridDim.x)
@@ -142,7 +144,7 @@ namespace o2
       __global__ void rand_write_k(
           chunk_t *chunkPtr,
           size_t chunkSize,
-          int prime)
+          int32_t prime)
       {
         for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < chunkSize; i += blockDim.x * gridDim.x)
         {
@@ -154,7 +156,7 @@ namespace o2
       __global__ void rand_write_k(
           int4 *chunkPtr,
           size_t chunkSize,
-          int prime)
+          int32_t prime)
       {
         for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < chunkSize; i += blockDim.x * gridDim.x)
         {
@@ -167,7 +169,7 @@ namespace o2
       __global__ void rand_copy_k(
           chunk_t *chunkPtr,
           size_t chunkSize,
-          int prime)
+          int32_t prime)
       {
         size_t offset = chunkSize / 2;
         for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < offset; i += blockDim.x * gridDim.x)
@@ -239,7 +241,7 @@ namespace o2
       __global__ void rand_read_dist_k(
           chunk_t **block_ptr,
           size_t *block_size,
-          int prime)
+          int32_t prime)
       {
         chunk_t sink{0};
         chunk_t *ptr = block_ptr[blockIdx.x];
@@ -256,7 +258,7 @@ namespace o2
       __global__ void rand_write_dist_k(
           chunk_t **block_ptr,
           size_t *block_size,
-          int prime)
+          int32_t prime)
       {
         chunk_t *ptr = block_ptr[blockIdx.x];
         size_t n = block_size[blockIdx.x];
@@ -270,7 +272,7 @@ namespace o2
       __global__ void rand_write_dist_k(
           int4 **block_ptr,
           size_t *block_size,
-          int prime)
+          int32_t prime)
       {
         int4 *ptr = block_ptr[blockIdx.x];
         size_t n = block_size[blockIdx.x];
@@ -285,7 +287,7 @@ namespace o2
       __global__ void rand_copy_dist_k(
           chunk_t **block_ptr,
           size_t *block_size,
-          int prime)
+          int32_t prime)
       {
         chunk_t *ptr = block_ptr[blockIdx.x];
         size_t n = block_size[blockIdx.x];
@@ -297,9 +299,9 @@ namespace o2
       }
     } // namespace gpu
 
-    void printDeviceProp(int deviceId)
+    void printDeviceProp(int32_t deviceId)
     {
-      const int w1 = 34;
+      const int32_t w1 = 34;
       std::cout << std::left;
       std::cout << std::setw(w1)
                 << "--------------------------------------------------------------------------------"
@@ -309,6 +311,20 @@ namespace o2
       cudaDeviceProp props;
       GPUCHECK(cudaGetDeviceProperties(&props, deviceId));
 
+      int32_t clockRateKHz = 0;
+      int32_t memoryClockRateKHz = 0;
+      int32_t computeMode = 0;
+
+#if (CUDART_VERSION >= 13000)
+      GPUCHECK(cudaDeviceGetAttribute(&clockRateKHz, cudaDevAttrClockRate, deviceId));
+      GPUCHECK(cudaDeviceGetAttribute(&memoryClockRateKHz, cudaDevAttrMemoryClockRate, deviceId));
+      GPUCHECK(cudaDeviceGetAttribute(&computeMode, cudaDevAttrComputeMode, deviceId));
+#else
+      clockRateKHz = props.clockRate;
+      memoryClockRateKHz = props.memoryClockRate;
+      computeMode = props.computeMode;
+      cooperativeMultiDevice = props.cooperativeMultiDeviceLaunch;
+#endif
       std::cout << std::setw(w1) << "Name: " << props.name << std::endl;
       std::cout << std::setw(w1) << "pciBusID: " << props.pciBusID << std::endl;
       std::cout << std::setw(w1) << "pciDeviceID: " << props.pciDeviceID << std::endl;
@@ -317,11 +333,16 @@ namespace o2
       std::cout << std::setw(w1) << "maxThreadsPerMultiProcessor: " << props.maxThreadsPerMultiProcessor
                 << std::endl;
       std::cout << std::setw(w1) << "isMultiGpuBoard: " << props.isMultiGpuBoard << std::endl;
-      std::cout << std::setw(w1) << "clockRate: " << (float)props.clockRate / 1000.0 << " Mhz" << std::endl;
-      std::cout << std::setw(w1) << "memoryClockRate: " << (float)props.memoryClockRate / 1000.0 << " Mhz"
+
+      // Use the variables we populated above for the moved properties
+      std::cout << std::setw(w1) << "clockRate: " << (float)clockRateKHz / 1000.0 << " Mhz" << std::endl;
+      std::cout << std::setw(w1) << "memoryClockRate: " << (float)memoryClockRateKHz / 1000.0 << " Mhz"
                 << std::endl;
+
       std::cout << std::setw(w1) << "memoryBusWidth: " << props.memoryBusWidth << std::endl;
-      std::cout << std::setw(w1) << "clockInstructionRate: " << (float)props.clockRate / 1000.0
+
+      // clockInstructionRate is just another name for clockRate in this context
+      std::cout << std::setw(w1) << "clockInstructionRate: " << (float)clockRateKHz / 1000.0
                 << " Mhz" << std::endl;
       std::cout << std::setw(w1) << "totalGlobalMem: " << std::fixed << std::setprecision(2)
                 << bytesToGB(props.totalGlobalMem) << " GB" << std::endl;
@@ -340,7 +361,10 @@ namespace o2
       std::cout << std::setw(w1) << "regsPerBlock: " << props.regsPerBlock << std::endl;
       std::cout << std::setw(w1) << "warpSize: " << props.warpSize << std::endl;
       std::cout << std::setw(w1) << "l2CacheSize: " << props.l2CacheSize << std::endl;
-      std::cout << std::setw(w1) << "computeMode: " << props.computeMode << std::endl;
+
+      // Use the variable for computeMode
+      std::cout << std::setw(w1) << "computeMode: " << computeMode << std::endl;
+
       std::cout << std::setw(w1) << "maxThreadsPerBlock: " << props.maxThreadsPerBlock << std::endl;
       std::cout << std::setw(w1) << "maxThreadsDim.x: " << props.maxThreadsDim[0] << std::endl;
       std::cout << std::setw(w1) << "maxThreadsDim.y: " << props.maxThreadsDim[1] << std::endl;
@@ -351,8 +375,6 @@ namespace o2
       std::cout << std::setw(w1) << "major: " << props.major << std::endl;
       std::cout << std::setw(w1) << "minor: " << props.minor << std::endl;
       std::cout << std::setw(w1) << "concurrentKernels: " << props.concurrentKernels << std::endl;
-      std::cout << std::setw(w1) << "cooperativeLaunch: " << props.cooperativeLaunch << std::endl;
-      std::cout << std::setw(w1) << "cooperativeMultiDeviceLaunch: " << props.cooperativeMultiDeviceLaunch << std::endl;
 #if defined(__HIPCC__)
       std::cout << std::setw(w1) << "arch.hasGlobalInt32Atomics: " << props.arch.hasGlobalInt32Atomics << std::endl;
       std::cout << std::setw(w1) << "arch.hasGlobalFloatAtomicExch: " << props.arch.hasGlobalFloatAtomicExch
@@ -387,12 +409,12 @@ namespace o2
       std::cout << std::setw(w1) << "asicRevision: " << props.asicRevision << std::endl;
 #endif
 
-      int deviceCnt;
+      int32_t deviceCnt;
       GPUCHECK(cudaGetDeviceCount(&deviceCnt));
       std::cout << std::setw(w1) << "peers: ";
-      for (int i = 0; i < deviceCnt; i++)
+      for (int32_t i = 0; i < deviceCnt; i++)
       {
-        int isPeer;
+        int32_t isPeer;
         GPUCHECK(cudaDeviceCanAccessPeer(&isPeer, i, deviceId));
         if (isPeer)
         {
@@ -401,9 +423,9 @@ namespace o2
       }
       std::cout << std::endl;
       std::cout << std::setw(w1) << "non-peers: ";
-      for (int i = 0; i < deviceCnt; i++)
+      for (int32_t i = 0; i < deviceCnt; i++)
       {
-        int isPeer;
+        int32_t isPeer;
         GPUCHECK(cudaDeviceCanAccessPeer(&isPeer, i, deviceId));
         if (!isPeer)
         {
@@ -425,9 +447,9 @@ namespace o2
     template <typename... T>
     float GPUbenchmark<chunk_t>::runSequential(void (*kernel)(chunk_t *, size_t, T...),
                                                std::pair<float, float> &chunk,
-                                               int nLaunches,
-                                               int nBlocks,
-                                               int nThreads,
+                                               int32_t nLaunches,
+                                               int32_t nBlocks,
+                                               int32_t nThreads,
                                                T &...args) // run for each chunk
     {
       float milliseconds{0.f};
@@ -440,7 +462,7 @@ namespace o2
 
       // Warm up
       (*kernel)<<<nBlocks, nThreads, 0, stream>>>(chunkPtr, getBufferCapacity<chunk_t>(chunk.second, mOptions.prime), args...);
-
+      GPUCHECK(cudaGetLastError());
       GPUCHECK(cudaEventCreate(&start));
       GPUCHECK(cudaEventCreate(&stop));
 
@@ -448,6 +470,7 @@ namespace o2
       for (auto iLaunch{0}; iLaunch < nLaunches; ++iLaunch)
       {                                                                                                                           // Schedule all the requested kernel launches
         (*kernel)<<<nBlocks, nThreads, 0, stream>>>(chunkPtr, getBufferCapacity<chunk_t>(chunk.second, mOptions.prime), args...); // NOLINT: clang-tidy false-positive
+        GPUCHECK(cudaGetLastError());
       }
       GPUCHECK(cudaEventRecord(stop));      // record checkpoint
       GPUCHECK(cudaEventSynchronize(stop)); // synchronize executions
@@ -463,10 +486,10 @@ namespace o2
     template <typename... T>
     std::vector<float> GPUbenchmark<chunk_t>::runConcurrent(void (*kernel)(chunk_t *, size_t, T...),
                                                             std::vector<std::pair<float, float>> &chunkRanges,
-                                                            int nLaunches,
-                                                            int dimStreams,
-                                                            int nBlocks,
-                                                            int nThreads,
+                                                            int32_t nLaunches,
+                                                            int32_t dimStreams,
+                                                            int32_t nBlocks,
+                                                            int32_t nThreads,
                                                             T &...args)
     {
       auto nChunks = chunkRanges.size();
@@ -531,9 +554,9 @@ namespace o2
     template <typename... T>
     float GPUbenchmark<chunk_t>::runDistributed(void (*kernel)(chunk_t **, size_t *, T...),
                                                 std::vector<std::pair<float, float>> &chunkRanges,
-                                                int nLaunches,
+                                                int32_t nLaunches,
                                                 size_t nBlocks,
-                                                int nThreads,
+                                                int32_t nThreads,
                                                 T &...args)
     {
       std::vector<chunk_t *> chunkPtrs(chunkRanges.size()); // Pointers to the beginning of each chunk
@@ -548,13 +571,13 @@ namespace o2
         chunkPtrs[iChunk] = getCustomPtr<chunk_t>(mState.scratchPtr, chunkRanges[iChunk].first);
         totChunkGB += chunkRanges[iChunk].second;
       }
-      int index{0};
+      int32_t index{0};
       for (size_t iChunk{0}; iChunk < chunkRanges.size(); ++iChunk)
       {
         float percFromMem = chunkRanges[iChunk].second / totChunkGB;
-        int blocksPerChunk = percFromMem * nBlocks;
+        int32_t blocksPerChunk = percFromMem * nBlocks;
         totComputedBlocks += blocksPerChunk;
-        for (int iBlock{0}; iBlock < blocksPerChunk; ++iBlock, ++index)
+        for (int32_t iBlock{0}; iBlock < blocksPerChunk; ++iBlock, ++index)
         {
           float memPerBlock = chunkRanges[iChunk].second / blocksPerChunk;
           ptrPerBlocks[index] = getCustomPtr<chunk_t>(chunkPtrs[iChunk], iBlock * memPerBlock);
@@ -614,10 +637,10 @@ namespace o2
     template <class chunk_t>
     void GPUbenchmark<chunk_t>::printDevices()
     {
-      int deviceCnt;
+      int32_t deviceCnt;
       GPUCHECK(cudaGetDeviceCount(&deviceCnt));
 
-      for (int i = 0; i < deviceCnt; i++)
+      for (int32_t i = 0; i < deviceCnt; i++)
       {
         GPUCHECK(cudaSetDevice(i));
         printDeviceProp(i);
@@ -647,7 +670,7 @@ namespace o2
       mState.nMultiprocessors = props.multiProcessorCount;
       mState.nMaxThreadsPerBlock = props.maxThreadsPerMultiProcessor;
       mState.nMaxThreadsPerDimension = props.maxThreadsDim[0];
-      mState.scratchSize = static_cast<long int>(mOptions.freeMemoryFractionToAllocate * free);
+      mState.scratchSize = static_cast<int64_t>(mOptions.freeMemoryFractionToAllocate * free);
 
       if (mState.testChunks.empty())
       {
@@ -702,10 +725,10 @@ namespace o2
       }
       nThreads *= mOptions.threadPoolFraction;
 
-      void (*kernel)(chunk_t *, size_t) = &gpu::read_k<chunk_t>;                                    // Initialising to a default value
-      void (*kernel_distributed)(chunk_t **, size_t *) = &gpu::read_dist_k<chunk_t>;                // Initialising to a default value
-      void (*kernel_rand)(chunk_t *, size_t, int) = &gpu::rand_read_k<chunk_t>;                     // Initialising to a default value
-      void (*kernel_rand_distributed)(chunk_t **, size_t *, int) = &gpu::rand_read_dist_k<chunk_t>; // Initialising to a default value
+      void (*kernel)(chunk_t *, size_t) = &gpu::read_k<chunk_t>;                                        // Initialising to a default value
+      void (*kernel_distributed)(chunk_t **, size_t *) = &gpu::read_dist_k<chunk_t>;                    // Initialising to a default value
+      void (*kernel_rand)(chunk_t *, size_t, int32_t) = &gpu::rand_read_k<chunk_t>;                     // Initialising to a default value
+      void (*kernel_rand_distributed)(chunk_t **, size_t *, int32_t) = &gpu::rand_read_dist_k<chunk_t>; // Initialising to a default value
 
       bool is_random{false};
 
@@ -794,7 +817,7 @@ namespace o2
         {
           std::cout << "   ├ " << mode << " " << test << " " << config << " block(s) (" << measurement + 1 << "/" << mOptions.nTests << "): \n"
                     << "   │   - blocks per kernel: " << nBlocks << "/" << dimGrid << "\n"
-                    << "   │   - threads per block: " << (int)nThreads << "\n";
+                    << "   │   - threads per block: " << (int32_t)nThreads << "\n";
         }
         if (mode == Mode::Sequential)
         {
@@ -977,8 +1000,9 @@ namespace o2
     }
 
     template class GPUbenchmark<char>;
+    template class GPUbenchmark<int8_t>;
     template class GPUbenchmark<size_t>;
-    template class GPUbenchmark<int>;
+    template class GPUbenchmark<int32_t>;
     template class GPUbenchmark<int4>;
 
   } // namespace benchmark
